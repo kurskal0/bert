@@ -374,6 +374,78 @@ class ColaProcessor(DataProcessor):
     return examples
 
 
+class StatutesProcessor(DataProcessor):
+
+    def _read_txt_(self, data_dir, x_file_name, y_file_name):
+        # 定义我们的读取方式，我的工程中已经将x文本和y文本分别存入txt文件中，没有分隔符
+        # 用gfile读取，打开一个没有线程锁的的文件IO Wrapper
+        # 基本上和python原生的open是一样的，只是在某些方面更高效一点
+        with tf.gfile.Open(data_dir + x_file_name, 'r') as f:
+            lines_x = [x.strip() for x in f.readlines()]
+        with tf.gfile.Open(data_dir + y_file_name, 'r') as f:
+            lines_y = [x.strip() for x in f.readlines()]
+        return lines_x, lines_y
+
+    def get_train_examples(self, data_dir):
+        lines_x, lines_y = self._read_txt_(data_dir, 'train_x.txt', 'train_y.txt')
+        examples = []
+        for (i, line) in enumerate(zip(lines_x, lines_y)):
+            guid = 'train-%d' % i
+            # 规范输入编码
+            text_a = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+            # 这里有一些特殊的任务，一般任务直接用上面的就行，下面的label操作可以注释掉
+            # 这里因为y会有多个标签，这里按单标签来做
+            label = label.strip().split()[0]
+
+            # 这里不做匹配任务，text_b为None
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label)
+            )
+        return examples
+
+    def get_dev_examples(self, data_dir):
+        lines_x, lines_y = self._read_txt_(data_dir, 'val_x.txt', 'val_y.txt')
+        examples = []
+        for (i, line) in enumerate(zip(lines_x, lines_y)):
+            guid = 'train-%d' % i
+            # 规范输入编码
+            text_a = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+            label = label.strip().split()[0]
+
+            # 这里不做匹配任务，text_b为None
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label)
+            )
+        return examples
+
+    def get_test_examples(self, data_dir):
+        lines_x, lines_y = self._read_txt_(data_dir, 'test_x.txt', 'test_y.txt')
+        examples = []
+        for (i, line) in enumerate(zip(lines_x, lines_y)):
+            guid = 'train-%d' % i
+            # 规范输入编码
+            text_a = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+            label = label.strip().split()[0]
+
+            # 这里不做匹配任务，text_b为None
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label)
+            )
+        return examples
+
+    def get_labels(self):
+        # 我事先统计了所有出现的y值，放在了vocab_y.txt里
+        # 因为这里没有原生的接口，这里暂时这么做了，只要保证能读到所有的类别就行了
+        with tf.gfile.Open('data/statutes_small/vocab_y.txt', 'r') as f:
+            vocab_y = [x.strip() for x in f.readlines()]
+
+        return vocab_y
+
+
+
 def convert_single_example(ex_index, example, label_list, max_seq_length,
                            tokenizer):
   """Converts a single `InputExample` into a single `InputFeatures`."""
@@ -788,6 +860,7 @@ def main(_):
       "mnli": MnliProcessor,
       "mrpc": MrpcProcessor,
       "xnli": XnliProcessor,
+      "cail2018": StatutesProcessor
   }
 
   tokenization.validate_case_matches_checkpoint(FLAGS.do_lower_case,
@@ -877,7 +950,12 @@ def main(_):
         seq_length=FLAGS.max_seq_length,
         is_training=True,
         drop_remainder=True)
-    estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
+    # *************************************************************************************
+    tensors_to_log = {"train loss": "loss/Mean:0"}
+    logging_hook = tf.train.LoggingTensorHook(
+        tensors=tensors_to_log, every_n_iter=100)
+    estimator.train(input_fn=train_input_fn, hooks=[logging_hook], max_steps=num_train_steps)
+    # *************************************************************************************
 
   if FLAGS.do_eval:
     eval_examples = processor.get_dev_examples(FLAGS.data_dir)
