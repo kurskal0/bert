@@ -358,6 +358,28 @@ class WordpieceTokenizer(object):
         output_tokens.extend(sub_tokens)
     return output_tokens
 
+class CharTokenizer(object):
+  """Runs end-to-end tokenziation."""
+
+  def __init__(self, vocab_file, do_lower_case=True):
+    self.vocab = load_vocab(vocab_file)
+    self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
+    self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab)
+
+  def tokenize(self, text):
+    split_tokens = []
+    for token in self.basic_tokenizer.tokenize(text):
+      for sub_token in token:
+        # 有的字符在预训练词典里没有
+        if not sub_token in self.vocab:
+          split_tokens.append('[UNK]')
+        else:
+          split_tokens.append(sub_token)
+    return split_tokens
+
+  def convert_tokens_to_ids(self, tokens):
+    return convert_tokens_to_ids(self.vocab, tokens)
+
 
 def _is_whitespace(char):
   """Checks whether `chars` is a whitespace character."""
