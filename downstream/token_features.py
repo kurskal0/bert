@@ -79,7 +79,8 @@ def read_input(file_dir):
     # 现在需要转化成id_list
     word_id_list = []
     for query in input_list:
-        split_tokens = token.tokenize(query)
+        quert_str = ''.join(query.strip().split())
+        split_tokens = token.tokenize(quert_str)
         if len(split_tokens) > SEQ_LEN:
             split_tokens = split_tokens[:SEQ_LEN]
         else:
