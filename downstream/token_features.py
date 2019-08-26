@@ -118,7 +118,7 @@ encoder_last_layer = model.get_sequence_output()
 encoder_last2_layer = model.all_encoder_layers[-2]
 
 # 读取数据
-token = tokenization.CharTokenizer(vocab_file=bert_vocab_file)
+token = tokenization.FullTokenizer(vocab_file=bert_vocab_file)
 
 input_train_data = read_input(file_dir='../data/legal_domain/train_x_c.txt')
 input_val_data = read_input(file_dir='../data/legal_domain/val_x_c.txt')
