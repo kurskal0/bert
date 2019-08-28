@@ -18,6 +18,6 @@
 
 * [使用BERT预训练模型+微调进行文本分类(博客园)](https://www.cnblogs.com/zhouxiaosong/p/11384197.html)
 
-* [使用BERT模型生成token级向量(博客园)](http://www.iamzxs.com/2019/08/23/使用BERT模型生成token级向量)
+* [使用BERT模型生成token级向量(博客园)](https://www.cnblogs.com/zhouxiaosong/p/11397655.html)
 
-* [使用BERT模型生成句子序列向量(博客园)](http://www.iamzxs.com/2019/08/28/使用BERT模型生成句子序列向量)
+* [使用BERT模型生成句子序列向量(博客园)](https://www.cnblogs.com/zhouxiaosong/p/11423326.html)
