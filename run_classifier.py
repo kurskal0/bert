@@ -387,7 +387,7 @@ class StatutesProcessor(DataProcessor):
         return lines_x, lines_y
 
     def get_train_examples(self, data_dir):
-        lines_x, lines_y = self._read_txt_(data_dir, 'train_x.txt', 'train_y.txt')
+        lines_x, lines_y = self._read_txt_(data_dir, 'train_x_no_seg.txt', 'train_y.txt')
         examples = []
         for (i, line) in enumerate(zip(lines_x, lines_y)):
             guid = 'train-%d' % i
@@ -405,7 +405,7 @@ class StatutesProcessor(DataProcessor):
         return examples
 
     def get_dev_examples(self, data_dir):
-        lines_x, lines_y = self._read_txt_(data_dir, 'val_x.txt', 'val_y.txt')
+        lines_x, lines_y = self._read_txt_(data_dir, 'val_x_no_seg.txt', 'val_y.txt')
         examples = []
         for (i, line) in enumerate(zip(lines_x, lines_y)):
             guid = 'train-%d' % i
@@ -421,7 +421,7 @@ class StatutesProcessor(DataProcessor):
         return examples
 
     def get_test_examples(self, data_dir):
-        lines_x, lines_y = self._read_txt_(data_dir, 'test_x.txt', 'test_y.txt')
+        lines_x, lines_y = self._read_txt_(data_dir, 'test_x_no_seg.txt', 'test_y.txt')
         examples = []
         for (i, line) in enumerate(zip(lines_x, lines_y)):
             guid = 'train-%d' % i
@@ -444,6 +444,72 @@ class StatutesProcessor(DataProcessor):
 
         return vocab_y
 
+
+class LegalDomainProcessor(DataProcessor):
+
+    def _read_txt_(self, data_dir, x_file_name, y_file_name):
+        # 定义我们的读取方式，我的工程中已经将x文本和y文本分别存入txt文件中，没有分隔符
+        # 用gfile读取，打开一个没有线程锁的的文件IO Wrapper
+        # 基本上和python原生的open是一样的，只是在某些方面更高效一点
+        # 因为我按照空格分开了，需要拼接一下，如果是原始文本，参考StatutesProcessor
+        with tf.gfile.Open(data_dir + x_file_name, 'r') as f:
+            lines_x = [''.join(x.strip().split()) for x in f.readlines()]
+        with tf.gfile.Open(data_dir + y_file_name, 'r') as f:
+            lines_y = [x.strip() for x in f.readlines()]
+        return lines_x, lines_y
+
+    def get_train_examples(self, data_dir):
+        lines_x, lines_y = self._read_txt_(data_dir, 'train_x_c.txt', 'train_y.txt')
+        examples = []
+        for (i, line) in enumerate(zip(lines_x, lines_y)):
+            guid = 'train-%d' % i
+            # 规范输入编码
+            text_a = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+
+            # 这里不做匹配任务，text_b为None
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label)
+            )
+        return examples
+
+    def get_dev_examples(self, data_dir):
+        lines_x, lines_y = self._read_txt_(data_dir, 'val_x_c.txt', 'val_y.txt')
+        examples = []
+        for (i, line) in enumerate(zip(lines_x, lines_y)):
+            guid = 'train-%d' % i
+            # 规范输入编码
+            text_a = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+
+            # 这里不做匹配任务，text_b为None
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label)
+            )
+        return examples
+
+    def get_test_examples(self, data_dir):
+        lines_x, lines_y = self._read_txt_(data_dir, 'test_x_c.txt', 'test_y.txt')
+        examples = []
+        for (i, line) in enumerate(zip(lines_x, lines_y)):
+            guid = 'train-%d' % i
+            # 规范输入编码
+            text_a = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+
+            # 这里不做匹配任务，text_b为None
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label)
+            )
+        return examples
+
+    def get_labels(self):
+        # 我事先统计了所有出现的y值，放在了vocab_y.txt里
+        # 因为这里没有原生的接口，这里暂时这么做了，只要保证能读到所有的类别就行了
+        with tf.gfile.Open('data/legal_domain/vocab_y.txt', 'r') as f:
+            vocab_y = [x.strip() for x in f.readlines()]
+
+        return vocab_y
 
 
 def convert_single_example(ex_index, example, label_list, max_seq_length,
@@ -860,7 +926,8 @@ def main(_):
       "mnli": MnliProcessor,
       "mrpc": MrpcProcessor,
       "xnli": XnliProcessor,
-      "cail2018": StatutesProcessor
+      "cail2018": StatutesProcessor,
+      "legaldomain": LegalDomainProcessor
   }
 
   tokenization.validate_case_matches_checkpoint(FLAGS.do_lower_case,

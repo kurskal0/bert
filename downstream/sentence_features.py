@@ -8,7 +8,8 @@
 """
 __author__ = 'Xiaosong Zhou'
 
-# 获取token features，即每一个字符的向量，可以用cls作为句子向量，也可以用每一个字符的向量
+# 获取sentence features，即每一个句子的向量，用cls作为句向量
+# 因为取cls作为句向量，所以需要用在具体数据集上微调过的模型，否则CLS向量并不好用
 import os
 import sys
 curPath = os.path.abspath(os.path.dirname(__file__))
@@ -20,6 +21,7 @@ import tokenization
 import modeling
 import numpy as np
 import h5py
+import re
 
 
 
@@ -46,28 +48,19 @@ input_ids = tf.placeholder(tf.int32, shape=[None, None], name='input_ids')
 input_mask = tf.placeholder(tf.int32, shape=[None, None], name='input_masks')
 segment_ids = tf.placeholder(tf.int32, shape=[None, None], name='segment_ids')
 
-BATCH_SIZE = 16
-SEQ_LEN = 510
+# 每个sample固定为80个句子
+SEQ_LEN = 80
+# 每个句子固定为128个token
+SENTENCE_LEN = 126
 
 
-def batch_iter(x, batch_size=64, shuffle=False):
+def get_batch_data(x):
     """生成批次数据，一个batch一个batch地产生句子向量"""
     data_len = len(x)
-    num_batch = int((data_len - 1) / batch_size) + 1
 
-    if shuffle:
-        indices = np.random.permutation(np.arange(data_len))
-        x_shuffle = np.array(x)[indices]
-    else:
-        x_shuffle = x[:]
-
-    word_mask = [[1] * (SEQ_LEN + 2) for i in range(data_len)]
-    word_segment_ids = [[0] * (SEQ_LEN + 2) for i in range(data_len)]
-
-    for i in range(num_batch):
-        start_id = i * batch_size
-        end_id = min((i + 1) * batch_size, data_len)
-        yield x_shuffle[start_id:end_id], word_mask[start_id:end_id], word_segment_ids[start_id:end_id]
+    word_mask = [[1] * (SENTENCE_LEN + 2) for i in range(data_len)]
+    word_segment_ids = [[0] * (SENTENCE_LEN + 2) for i in range(data_len)]
+    return x, word_mask, word_segment_ids
 
 
 def read_input(file_dir):
@@ -81,24 +74,28 @@ def read_input(file_dir):
     # 现在需要转化成id_list
     word_id_list = []
     for query in input_list:
+        tmp_word_id_list = []
         quert_str = ''.join(query.strip().split())
-        split_tokens = token.tokenize(quert_str)
-        if len(split_tokens) > SEQ_LEN:
-            split_tokens = split_tokens[:SEQ_LEN]
-        else:
-            while len(split_tokens) < SEQ_LEN:
-                split_tokens.append('[PAD]')
-        # ****************************************************
-        # 如果是需要用到句向量，需要用这个方法
-        # 加个CLS头，加个SEP尾
-        tokens = []
-        tokens.append("[CLS]")
-        for i_token in split_tokens:
-            tokens.append(i_token)
-        tokens.append("[SEP]")
-        # ****************************************************
-        word_ids = token.convert_tokens_to_ids(tokens)
-        word_id_list.append(word_ids)
+        sentences = re.split('。', quert_str)
+        for sentence in sentences:
+            split_tokens = token.tokenize(sentence)
+            if len(split_tokens) > SENTENCE_LEN:
+                split_tokens = split_tokens[:SENTENCE_LEN]
+            else:
+                while len(split_tokens) < SENTENCE_LEN:
+                    split_tokens.append('[PAD]')
+            # ****************************************************
+            # 如果是需要用到句向量，需要用这个方法
+            # 加个CLS头，加个SEP尾
+            tokens = []
+            tokens.append("[CLS]")
+            for i_token in split_tokens:
+                tokens.append(i_token)
+            tokens.append("[SEP]")
+            # ****************************************************
+            word_ids = token.convert_tokens_to_ids(tokens)
+            tmp_word_id_list.append(word_ids)
+        word_id_list.append(tmp_word_id_list)
     return word_id_list
 
 
@@ -123,48 +120,82 @@ encoder_last2_layer = model.all_encoder_layers[-2]
 # 读取数据
 token = tokenization.FullTokenizer(vocab_file=bert_vocab_file)
 
-input_train_data = read_input(file_dir='../data/legal_domain/train_x_c.txt')
-input_val_data = read_input(file_dir='../data/legal_domain/val_x_c.txt')
-input_test_data = read_input(file_dir='../data/legal_domain/test_x_c.txt')
+input_train_data = read_input(file_dir=file_input_x_c_train)
+input_val_data = read_input(file_dir=file_input_x_c_val)
+input_test_data = read_input(file_dir=file_input_x_c_test)
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    save_file = h5py.File('../downstream/emb_fine_tune.h5', 'w')
+    save_file = h5py.File('../downstream/emb_sentences.h5', 'w')
+
+    # 训练集
     emb_train = []
-    train_batches = batch_iter(input_train_data, batch_size=BATCH_SIZE, shuffle=False)
-    for word_id, mask, segment in train_batches:
-        feed_data = {input_ids: word_id, input_mask: mask, segment_ids: segment}
+    for sample in input_train_data:
+        # 一个样本（假设有n个句子）就为一个batch
+        word_id, mask, segment = get_batch_data(sample)
+        feed_data = {input_ids: np.asarray(word_id), input_mask: np.asarray(mask), segment_ids: np.asarray(segment)}
         last2 = sess.run(encoder_last2_layer, feed_dict=feed_data)
-        # print(last2.shape)
-        for sub_array in last2:
-            emb_train.append(sub_array)
-    # 可以保存了
+        print('******************************************************************')
+        print(last2.shape)
+        # last2 shape：(seq_len, 50, 768)
+        tmp_list = []
+        for i in last2:
+            tmp_list.append(i[0])
+        if len(tmp_list) > SEQ_LEN:
+            tmp_list = tmp_list[:SEQ_LEN]
+        else:
+            while len(tmp_list) < SEQ_LEN:
+                pad_vector = [0 for i in range(768)]
+                tmp_list.append(pad_vector)
+
+        emb_train.append(tmp_list)
+    # 保存
     emb_train_array = np.asarray(emb_train)
     save_file.create_dataset('train', data=emb_train_array)
 
-    # val
+    # 验证集
     emb_val = []
-    val_batches = batch_iter(input_val_data, batch_size=BATCH_SIZE, shuffle=False)
-    for word_id, mask, segment in val_batches:
-        feed_data = {input_ids: word_id, input_mask: mask, segment_ids: segment}
+    for sample in input_val_data:
+        # 一个样本（假设有n个句子）就为一个batch
+        word_id, mask, segment = get_batch_data(sample)
+        feed_data = {input_ids: np.asarray(word_id), input_mask: np.asarray(mask), segment_ids: np.asarray(segment)}
         last2 = sess.run(encoder_last2_layer, feed_dict=feed_data)
-        # print(last2.shape)
-        for sub_array in last2:
-            emb_val.append(sub_array)
-    # 可以保存了
+        # last2 shape：(seq_len, 50, 768)
+        tmp_list = []
+        for i in last2:
+            tmp_list.append(i[0])
+        if len(tmp_list) > SEQ_LEN:
+            tmp_list = tmp_list[:SEQ_LEN]
+        else:
+            while len(tmp_list) < SEQ_LEN:
+                pad_vector = [0 for i in range(768)]
+                tmp_list.append(pad_vector)
+
+        emb_val.append(tmp_list)
+    # 保存
     emb_val_array = np.asarray(emb_val)
     save_file.create_dataset('val', data=emb_val_array)
 
-    # test
+    # 测试集
     emb_test = []
-    test_batches = batch_iter(input_test_data, batch_size=BATCH_SIZE, shuffle=False)
-    for word_id, mask, segment in test_batches:
-        feed_data = {input_ids: word_id, input_mask: mask, segment_ids: segment}
+    for sample in input_test_data:
+        # 一个样本（假设有n个句子）就为一个batch
+        word_id, mask, segment = get_batch_data(sample)
+        feed_data = {input_ids: np.asarray(word_id), input_mask: np.asarray(mask), segment_ids: np.asarray(segment)}
         last2 = sess.run(encoder_last2_layer, feed_dict=feed_data)
-        # print(last2.shape)
-        for sub_array in last2:
-            emb_test.append(sub_array)
-    # 可以保存了
+        # last2 shape：(seq_len, 50, 768)
+        tmp_list = []
+        for i in last2:
+            tmp_list.append(i[0])
+        if len(tmp_list) > SEQ_LEN:
+            tmp_list = tmp_list[:SEQ_LEN]
+        else:
+            while len(tmp_list) < SEQ_LEN:
+                pad_vector = [0 for i in range(768)]
+                tmp_list.append(pad_vector)
+
+        emb_test.append(tmp_list)
+    # 保存
     emb_test_array = np.asarray(emb_test)
     save_file.create_dataset('test', data=emb_test_array)
 

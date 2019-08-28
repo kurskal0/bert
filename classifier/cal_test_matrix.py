@@ -25,7 +25,7 @@ def cal_accuracy(rst_file_dir, y_test_dir):
     labels = []
 
     # 这一步是获取y标签到id，id到标签的对应dict，每个人获取的方式应该不一致
-    y2id, id2y = get_y_to_id(vocab_y_dir='../data/statutes_small/vocab_y.txt')
+    y2id, id2y = get_y_to_id(vocab_y_dir='../data/legal_domain/vocab_y.txt')
     with open(y_test_dir, 'r', encoding='utf-8') as f:
         line = f.readline()
         while line:
@@ -49,6 +49,6 @@ def get_y_to_id(vocab_y_dir):
 
 
 if __name__ == '__main__':
-    count = len(open(r"../data/statutes_small/test_x.txt", 'r', encoding='utf-8').readlines())
-    print(count)
-    cal_accuracy(rst_file_dir='../out/test_results.tsv', y_test_dir='../data/statutes_small/test_y.txt')
+    # count = len(open(r"../data/statutes_small/test_x_no_seg.txt", 'r', encoding='utf-8').readlines())
+    # print(count)
+    cal_accuracy(rst_file_dir='../out/test_results.tsv', y_test_dir='../data/legal_domain/test_y.txt')
