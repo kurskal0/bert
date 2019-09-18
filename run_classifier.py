@@ -512,6 +512,82 @@ class LegalDomainProcessor(DataProcessor):
         return vocab_y
 
 
+class OpenTaskProcessor(DataProcessor):
+    # 公开数据集处理类，格式也是train.txt， train_y.txt
+
+    def __init__(self):
+
+        # self.labels = ['财经', '彩票', '房产',
+        #                '股票', '家居', '教育',
+        #                '科技', '社会', '时尚',
+        #                '时政', '体育', '星座',
+        #                '游戏', '娱乐']
+
+        # self.labels = ['机械制造行业', '五金建材行业', '农林牧渔行业',
+        #           '化工行业', '电子通讯行业', '文体生活用品行业',
+        #           '农副食品行业', '纺织服饰行业', '家电行业', '其他行业',
+        #           '食品药品行业', '交通运输行业', '酒水饮料茶奶行业']
+
+        self.labels = ['pos','neg']
+
+    def _read_txt_(self, data_dir, x_file_name, y_file_name):
+        # 定义我们的读取方式，我的工程中已经将x文本和y文本分别存入txt文件中，没有分隔符
+        # 用gfile读取，打开一个没有线程锁的的文件IO Wrapper
+        # 基本上和python原生的open是一样的，只是在某些方面更高效一点
+        with tf.gfile.Open(data_dir + x_file_name, 'r') as f:
+            lines_x = [x.strip() for x in f.readlines()]
+        with tf.gfile.Open(data_dir + y_file_name, 'r') as f:
+            lines_y = [x.strip() for x in f.readlines()]
+        return lines_x, lines_y
+
+    def get_train_examples(self, data_dir):
+        lines_x, lines_y = self._read_txt_(data_dir, 'train_x.txt', 'train_y.txt')
+        examples = []
+        for (i, line) in enumerate(zip(lines_x, lines_y)):
+            guid = 'train-%d' % i
+            # 规范输入编码
+            text_a = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+            # 这里不做匹配任务，text_b为None
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label)
+            )
+        return examples
+
+    def get_dev_examples(self, data_dir):
+        lines_x, lines_y = self._read_txt_(data_dir, 'val_x.txt', 'val_y.txt')
+        examples = []
+        for (i, line) in enumerate(zip(lines_x, lines_y)):
+            guid = 'train-%d' % i
+            # 规范输入编码
+            text_a = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+
+            # 这里不做匹配任务，text_b为None
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label)
+            )
+        return examples
+
+    def get_test_examples(self, data_dir):
+        lines_x, lines_y = self._read_txt_(data_dir, 'test_x.txt', 'test_y.txt')
+        examples = []
+        for (i, line) in enumerate(zip(lines_x, lines_y)):
+            guid = 'train-%d' % i
+            # 规范输入编码
+            text_a = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+
+            # 这里不做匹配任务，text_b为None
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, label=label)
+            )
+        return examples
+
+    def get_labels(self):
+        return self.labels
+
+
 def convert_single_example(ex_index, example, label_list, max_seq_length,
                            tokenizer):
   """Converts a single `InputExample` into a single `InputFeatures`."""
@@ -927,7 +1003,8 @@ def main(_):
       "mrpc": MrpcProcessor,
       "xnli": XnliProcessor,
       "cail2018": StatutesProcessor,
-      "legaldomain": LegalDomainProcessor
+      "legaldomain": LegalDomainProcessor,
+      "opendomain":OpenTaskProcessor
   }
 
   tokenization.validate_case_matches_checkpoint(FLAGS.do_lower_case,

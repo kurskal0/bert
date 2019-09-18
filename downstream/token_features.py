@@ -30,13 +30,14 @@ bert_config_file = data_root + 'bert_config.json'
 bert_config = modeling.BertConfig.from_json_file(bert_config_file)
 # init_checkpoint = data_root + 'bert_model.ckpt'
 # 这样的话，就是使用在具体任务上微调过的模型来做词向量
-init_checkpoint = '../model/legal_fine_tune/model.ckpt-4153'
+# init_checkpoint = '../model/legal_fine_tune/model.ckpt-4153'
+init_checkpoint = '../model/cnews_fine_tune/model.ckpt-18674'
 bert_vocab_file = data_root + 'vocab.txt'
 
 # 经过处理的输入文件路径
-file_input_x_c_train = '../data/legal_domain/train_x_c.txt'
-file_input_x_c_val = '../data/legal_domain/val_x_c.txt'
-file_input_x_c_test = '../data/legal_domain/test_x_c.txt'
+# file_input_x_c_train = '../data/legal_domain/train_x_c.txt'
+# file_input_x_c_val = '../data/legal_domain/val_x_c.txt'
+# file_input_x_c_test = '../data/legal_domain/test_x_c.txt'
 
 # embedding存放路径
 # emb_file_dir = '../data/legal_domain/emb_fine_tune.h5'
@@ -123,13 +124,16 @@ encoder_last2_layer = model.all_encoder_layers[-2]
 # 读取数据
 token = tokenization.FullTokenizer(vocab_file=bert_vocab_file)
 
-input_train_data = read_input(file_dir='../data/legal_domain/train_x_c.txt')
-input_val_data = read_input(file_dir='../data/legal_domain/val_x_c.txt')
-input_test_data = read_input(file_dir='../data/legal_domain/test_x_c.txt')
+# input_train_data = read_input(file_dir='../data/legal_domain/train_x_c.txt')
+input_train_data = read_input(file_dir='../data/cnews/train_x.txt')
+# input_val_data = read_input(file_dir='../data/legal_domain/val_x_c.txt')
+input_val_data = read_input(file_dir='../data/cnews/val_x.txt')
+# input_test_data = read_input(file_dir='../data/legal_domain/test_x_c.txt')
+input_test_data = read_input(file_dir='../data/cnews/test_x.txt')
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    save_file = h5py.File('../downstream/emb_fine_tune.h5', 'w')
+    save_file = h5py.File('../downstream/emb_fine_tune_cnews.h5', 'w')
     emb_train = []
     train_batches = batch_iter(input_train_data, batch_size=BATCH_SIZE, shuffle=False)
     for word_id, mask, segment in train_batches:

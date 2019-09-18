@@ -32,13 +32,14 @@ bert_config_file = data_root + 'bert_config.json'
 bert_config = modeling.BertConfig.from_json_file(bert_config_file)
 # init_checkpoint = data_root + 'bert_model.ckpt'
 # 这样的话，就是使用在具体任务上微调过的模型来做词向量
-init_checkpoint = '../model/legal_fine_tune/model.ckpt-4153'
+init_checkpoint = '../model/cnews_fine_tune/model.ckpt-18674'
+# init_checkpoint = '../model/legal_fine_tune/model.ckpt-4153'
 bert_vocab_file = data_root + 'vocab.txt'
 
 # 经过处理的输入文件路径
-file_input_x_c_train = '../data/legal_domain/train_x_c.txt'
-file_input_x_c_val = '../data/legal_domain/val_x_c.txt'
-file_input_x_c_test = '../data/legal_domain/test_x_c.txt'
+file_input_x_c_train = '../data/cnews/train_x.txt'
+file_input_x_c_val = '../data/cnews/val_x.txt'
+file_input_x_c_test = '../data/cnews/test_x.txt'
 
 # embedding存放路径
 # emb_file_dir = '../data/legal_domain/emb_fine_tune.h5'
@@ -77,6 +78,9 @@ def read_input(file_dir):
         tmp_word_id_list = []
         quert_str = ''.join(query.strip().split())
         sentences = re.split('。', quert_str)
+        # 在这里截取掉大于seq_len个句子的样本，保留其前seq_len个句子
+        if len(sentences) > SEQ_LEN:
+            sentences = sentences[:SEQ_LEN]
         for sentence in sentences:
             split_tokens = token.tokenize(sentence)
             if len(split_tokens) > SENTENCE_LEN:
@@ -126,17 +130,21 @@ input_test_data = read_input(file_dir=file_input_x_c_test)
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    save_file = h5py.File('../downstream/emb_sentences.h5', 'w')
+    save_file = h5py.File('../downstream/cnews_emb_sentences.h5', 'w')
 
     # 训练集
     emb_train = []
+    ssum = 0
+    pad_vector = [0 for i in range(768)]
     for sample in input_train_data:
+        ssum += 1
         # 一个样本（假设有n个句子）就为一个batch
         word_id, mask, segment = get_batch_data(sample)
         feed_data = {input_ids: np.asarray(word_id), input_mask: np.asarray(mask), segment_ids: np.asarray(segment)}
         last2 = sess.run(encoder_last2_layer, feed_dict=feed_data)
         print('******************************************************************')
         print(last2.shape)
+        print(ssum)
         # last2 shape：(seq_len, 50, 768)
         tmp_list = []
         for i in last2:
@@ -145,7 +153,6 @@ with tf.Session() as sess:
             tmp_list = tmp_list[:SEQ_LEN]
         else:
             while len(tmp_list) < SEQ_LEN:
-                pad_vector = [0 for i in range(768)]
                 tmp_list.append(pad_vector)
 
         emb_train.append(tmp_list)
@@ -154,6 +161,7 @@ with tf.Session() as sess:
     save_file.create_dataset('train', data=emb_train_array)
 
     # 验证集
+    print("开始验证集")
     emb_val = []
     for sample in input_val_data:
         # 一个样本（假设有n个句子）就为一个batch
@@ -168,7 +176,6 @@ with tf.Session() as sess:
             tmp_list = tmp_list[:SEQ_LEN]
         else:
             while len(tmp_list) < SEQ_LEN:
-                pad_vector = [0 for i in range(768)]
                 tmp_list.append(pad_vector)
 
         emb_val.append(tmp_list)
@@ -191,7 +198,6 @@ with tf.Session() as sess:
             tmp_list = tmp_list[:SEQ_LEN]
         else:
             while len(tmp_list) < SEQ_LEN:
-                pad_vector = [0 for i in range(768)]
                 tmp_list.append(pad_vector)
 
         emb_test.append(tmp_list)

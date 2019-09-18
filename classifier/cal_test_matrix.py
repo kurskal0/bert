@@ -25,7 +25,7 @@ def cal_accuracy(rst_file_dir, y_test_dir):
     labels = []
 
     # 这一步是获取y标签到id，id到标签的对应dict，每个人获取的方式应该不一致
-    y2id, id2y = get_y_to_id(vocab_y_dir='../data/legal_domain/vocab_y.txt')
+    y2id, id2y = get_y_to_id(vocab_y_dir='../data/cnews/vocab_y.txt')
     with open(y_test_dir, 'r', encoding='utf-8') as f:
         line = f.readline()
         while line:
@@ -38,6 +38,9 @@ def cal_accuracy(rst_file_dir, y_test_dir):
     # 预测，pred，真实标签，labels
     accuracy = metrics.accuracy_score(y_true=labels, y_pred=pred)
     print(accuracy)
+    # 评估
+    print("Precision, Recall and F1-Score...")
+    print(metrics.classification_report(labels, pred, digits=4))
 
 
 def get_y_to_id(vocab_y_dir):
@@ -51,4 +54,4 @@ def get_y_to_id(vocab_y_dir):
 if __name__ == '__main__':
     # count = len(open(r"../data/statutes_small/test_x_no_seg.txt", 'r', encoding='utf-8').readlines())
     # print(count)
-    cal_accuracy(rst_file_dir='../out/test_results.tsv', y_test_dir='../data/legal_domain/test_y.txt')
+    cal_accuracy(rst_file_dir='../out/cnews/test_results.tsv', y_test_dir='../data/cnews/test_y.txt')
