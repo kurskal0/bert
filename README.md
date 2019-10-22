@@ -1,6 +1,12 @@
-# BERT
+# BERT For Specific Tasks
 
-**\*\*\*\*\* New May 31st, 2019: Whole Word Masking Models \*\*\*\*\***
+# fine-tuning for classification 
+-- modify and run run_classifier.py
+# getting token sequence features (emb_fine_tune.h5)
+-- modify and run downstream/token_features.py
+
+# getting sentence sequence features (emb_sentences.h5)
+-- modify and run downstream/sentence_features.py
 
 在BERT项目源码的基础上尝试微调分类任务以及获取句向量任务。
 
