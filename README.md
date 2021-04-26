@@ -18,12 +18,12 @@
 
 * [使用BERT模型生成句子序列向量](http://www.iamzxs.com/2019/08/28/使用BERT模型生成句子序列向量)
 
-# 系列文章(博客园)
+# 系列文章(csdn)
 
 因为种种原因如果个人主页无法访问请访问博客园文章
 
-* [使用BERT预训练模型+微调进行文本分类(博客园)](https://www.cnblogs.com/zhouxiaosong/p/11384197.html)
+* [使用BERT预训练模型+微调进行文本分类(csdn)](https://blog.csdn.net/real_cactus/article/details/110621487?spm=1001.2014.3001.5501)
 
-* [使用BERT模型生成token级向量(博客园)](https://www.cnblogs.com/zhouxiaosong/p/11397655.html)
+* [使用BERT模型生成token级向量(csdn)](https://blog.csdn.net/real_cactus/article/details/110621483?spm=1001.2014.3001.5501)
 
-* [使用BERT模型生成句子序列向量(博客园)](https://www.cnblogs.com/zhouxiaosong/p/11423326.html)
+* [使用BERT模型生成句子序列向量(csdn)](https://blog.csdn.net/real_cactus/article/details/110621485?spm=1001.2014.3001.5501)
